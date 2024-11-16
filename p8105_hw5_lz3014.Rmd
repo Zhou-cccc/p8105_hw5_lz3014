@@ -1,0 +1,14 @@
+---
+title: "p8105_hw5_lz3014"
+auther: "Liqi Zhou"
+date: 2024-11-15
+output: github_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(broom)
+library(purrr)
+
+set.seed(1115)
+```
