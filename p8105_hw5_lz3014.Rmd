@@ -161,5 +161,71 @@ avg_mu_estimate_rejected |>
   theme_minimal()
 ```
 
-Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$ ? Why or why not?
+Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$ ? Why or why not?  
 - No. Because the tests for which the null is rejected are biased towards samples with extreme values, which tend to have larger estimation compared to the true mean.
+
+
+# Problem 3
+```{r}
+homicide_data <- read_csv("./data/homicide-data.csv")
+head(homicide_data, 10)
+```
+**Description**  
+- This dataset contains `r nrow(homicide_data)` rows and `r ncol(homicide_data)` columns, each row representing a homicide case in the United States. Variables include victim details (e.g. name, race, age), case location (e.g. city, state, latitude, longitude), and case status (e.g. closed, open).
+
+### 1. create city_state variable and summarize
+```{r}
+homicide_num <- homicide_data |>
+  mutate(city_state = str_c(city, state, sep = ", ")) |>
+  group_by(city_state) |>
+  summarize(
+    total_cases = n(),
+    unsolved_cases = sum(disposition %in% c("Closed without arrest", "Open/No arrest")),
+    .groups = "drop"
+  )
+```
+
+### 2. Prop.tes for city of Baltimore, MD
+```{r}
+baltimore_num <- homicide_num |>
+  filter(city_state == "Baltimore, MD") 
+
+baltimore_unso_prop <- prop.test(baltimore_num$unsolved_cases, baltimore_num$total_cases) |>
+  broom::tidy()
+
+baltimore_pull <- baltimore_unso_prop |> 
+  select(estimate, conf.low, conf.high) |>
+  knitr::kable()
+
+baltimore_pull
+```
+
+### 3. Prop.test for each of the cities
+```{r warning=FALSE}
+homicide_prop <- homicide_num |>
+  mutate(
+    prop_test = map2(unsolved_cases, total_cases, \(x, y) prop.test(x, y)),
+    tidy_result = map(prop_test, broom::tidy)
+  ) |>
+  unnest(tidy_result) |>
+  select(city_state, estimate, conf.low, conf.high)
+
+head(homicide_prop, 10)
+```
+
+### 4. Plot: Proportion of Unsolved Homicides by City
+```{r}
+homicide_prop |>
+  ggplot(aes(x = reorder(city_state, estimate), y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  labs(
+    title = "Proportion of Unsolved Homicides by City",
+    y = "Estimated Proportion of Unsolved Homicides",
+    x = "City"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)
+  )
+```
